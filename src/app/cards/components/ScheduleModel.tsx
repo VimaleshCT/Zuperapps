@@ -51,10 +51,15 @@ export default function ScheduleModal({ mode }: any) {
             onChange={(v) => setNumber(String(v))}
           />
 
-          <Flex direction="column" gap="xs">
-            <Text variant="bodytext">Contact</Text>
-            <Text>{contactName || "Unknown contact"}</Text>
-          </Flex>
+           <Select
+            label="Contact"
+            name="contact"
+            options={[
+              { label: contactName || "Unknown contact", value: contactPhone },
+            ]}
+            value={contactPhone}
+            onChange={() => {}}
+          />
 
           <Select
             label="Timezone"
