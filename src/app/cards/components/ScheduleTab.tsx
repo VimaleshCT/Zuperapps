@@ -17,10 +17,8 @@ export default function ScheduleTab(){
           Schedule an SMS to automatically send messages later.
         </Text>
 
-        <Button
-          variant="primary"
-          overlay={<ScheduleModal />}
-        >
+      <Button variant="primary"
+         overlay={<ScheduleModal mode="schedule" />}>
           Schedule SMS
         </Button>
 
