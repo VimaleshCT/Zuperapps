@@ -5,8 +5,34 @@ import {
 import { useCrmProperties } from "@hubspot/ui-extensions/crm";
 import { useState, useEffect } from "react";
 
-export default function ScheduleModal({ mode, activeTab, actions }: any) {
+const IANA_ZONES: Record<string, string> = {
+  sydney: "Australia/Sydney",
+  india: "Asia/Kolkata",
+  uk: "Europe/London",
+};
 
+const getDateTimeForTimezone = (tz: string) => {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: IANA_ZONES[tz],
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(new Date());
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value);
+
+  return {
+    date: { year: get("year"), month: get("month") - 1, date: get("day") },
+    time: { hours: get("hour"), minutes: get("minute") },
+  };
+};
+
+export default function ScheduleModal({ mode, activeTab, actions }: any) {
   const { properties, isLoading } = useCrmProperties([
     "firstname",
     "lastname",
@@ -26,7 +52,18 @@ export default function ScheduleModal({ mode, activeTab, actions }: any) {
     message?: string;
   }>({});
 
- 
+  useEffect(() => {
+    const { date: tzDate, time: tzTime } = getDateTimeForTimezone(timezone);
+    setDate(tzDate);
+    setTime(tzTime);
+  }, []);
+
+  useEffect(() => {
+    const { date: tzDate, time: tzTime } = getDateTimeForTimezone(timezone);
+    setDate(tzDate);
+    setTime(tzTime);
+  }, [timezone]);
+
   useEffect(() => {
     setFieldErrors({});
   }, [activeTab]);
@@ -35,7 +72,6 @@ export default function ScheduleModal({ mode, activeTab, actions }: any) {
 
   const contactName =
     `${properties?.firstname ?? ""} ${properties?.lastname ?? ""}`.trim();
-
   const contactPhone = properties?.phone ?? "";
 
   const numbers = [
@@ -49,21 +85,15 @@ export default function ScheduleModal({ mode, activeTab, actions }: any) {
     { label: "(GMT+00:00) London", value: "uk" },
   ];
 
-  const now = new Date();
-  const today = {
-    year: now.getFullYear(),
-    month: now.getMonth(),
-    date: now.getDate(),
-  };
+  const tzNow = getDateTimeForTimezone(timezone);
+  const minDate = tzNow.date;
 
   const isToday =
-    date?.year === today.year &&
-    date?.month === today.month &&
-    date?.date === today.date;
+    date?.year === minDate.year &&
+    date?.month === minDate.month &&
+    date?.date === minDate.date;
 
-  const currentTime = isToday
-    ? { hours: now.getHours(), minutes: now.getMinutes() }
-    : undefined;
+  const minTime = isToday ? tzNow.time : undefined;
 
   const handleSchedule = () => {
     const errors: {
@@ -84,11 +114,9 @@ export default function ScheduleModal({ mode, activeTab, actions }: any) {
   };
 
   return (
-    <Modal id="schedule-modal" title="Schedule Message" width="md">
-
+    <Modal id="schedule-modal" title="Schedule Message" width="lg">
       <ModalBody>
         <Flex direction="column" gap="medium">
-
           <Select
             label="From Number"
             options={numbers}
@@ -126,7 +154,7 @@ export default function ScheduleModal({ mode, activeTab, actions }: any) {
                 name="date"
                 label="Date"
                 value={date}
-                min={today}
+                min={minDate}
                 minValidationMessage="Cannot schedule in the past"
                 error={!!fieldErrors.date}
                 validationMessage={fieldErrors.date}
@@ -142,7 +170,7 @@ export default function ScheduleModal({ mode, activeTab, actions }: any) {
                 name="time"
                 label="Time"
                 value={time}
-                min={currentTime}
+                min={minTime}
                 error={!!fieldErrors.time}
                 validationMessage={fieldErrors.time}
                 onChange={(v) => {
@@ -169,26 +197,22 @@ export default function ScheduleModal({ mode, activeTab, actions }: any) {
           <Text variant="microcopy">
             This field allows a maximum of 250 characters
           </Text>
-
         </Flex>
       </ModalBody>
 
       <ModalFooter>
-       <Button
+        <Button
           variant="secondary"
           overlay={
-            <Modal id="schedule-modal" onClose={() => {}}>
-            </Modal>
+            <Modal id="schedule-modal" onClose={() => {}}></Modal>
           }
         >
           Cancel
         </Button>
-
         <Button variant="primary" onClick={handleSchedule}>
           Schedule SMS
         </Button>
       </ModalFooter>
-
     </Modal>
   );
 }
