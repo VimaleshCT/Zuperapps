@@ -1,28 +1,67 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Select,
   TextArea,
   Button,
   Flex,
-  Tile, Text, Divider,
+  Text,
   Tag
 } from "@hubspot/ui-extensions";
 import { useCrmProperties } from "@hubspot/ui-extensions/crm";
 
-export default function SmsTab({ openModal }: any) {
+export default function SmsTab({ context, activeTab, openModal }: any) {
 
-  const { properties, isLoading } = useCrmProperties([
-    "firstname",
-    "lastname",
-    "phone",
-  ]);
+  const objectType = context?.crm?.objectTypeId;
+
+  const propertyNames =
+    objectType === "0-2"
+      ? ["name", "phone"]
+      : objectType === "0-3"
+        ? ["dealname", "hubspot_owner_id"]
+        : ["firstname", "lastname", "phone"];
+
+  const { properties, isLoading } = useCrmProperties(propertyNames);
 
   const [number, setNumber] = useState("");
   const [message, setMessage] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{
+    number?: string;
+    phone?: string;
+    message?: string;
+  }>({});
 
-  const contactName =
-    `${properties?.firstname ?? ""} ${properties?.lastname ?? ""}`.trim();
-  const contactPhone = properties?.phone ?? "";
+  useEffect(() => {
+    setFieldErrors({});
+  }, [activeTab]);
+
+  const recordName =
+    objectType === "0-2"
+      ? properties?.name ?? ""
+      
+      : objectType === "0-3"
+        ? properties?.dealname ?? ""
+        : `${properties?.firstname ?? ""} ${properties?.lastname ?? ""}`.trim();
+
+  const recordPhone = properties?.phone ?? "";
+
+  const recordLabel =
+    objectType === "0-2"
+      ? "Company"
+      : objectType === "0-3"
+        ? "Deal"
+        : "Contact";
+
+  const handleSend = () => {
+    const errors: { number?: string; phone?: string; message?: string } = {};
+    if (!number) errors.number = "From Number is required";
+    if (!recordPhone) errors.phone = `${recordLabel} Phone is required`;
+    if (!message) errors.message = "Message is required";
+
+    setFieldErrors(errors);
+    if (Object.keys(errors).length > 0) return;
+
+    openModal();
+  };
 
   const numbers = [
     { label: "+91 9000000000", value: "+919000000000" },
@@ -42,34 +81,40 @@ export default function SmsTab({ openModal }: any) {
         label="From Number"
         options={numbers}
         value={number}
-        onChange={(val) => setNumber(String(val))}
+        error={!!fieldErrors.number}
+        validationMessage={fieldErrors.number}
+        onChange={(v) => {
+          setNumber(String(v));
+          setFieldErrors((prev) => ({ ...prev, number: undefined }));
+        }}
       />
 
       <Select
-        label="Contact"
-        name="contact"
+        label={recordLabel}
+        name="record"
         options={[
-          { label: contactName || "Unknown contact", value: contactPhone },
+          { label: recordName || `Unknown ${recordLabel.toLowerCase()}`, value: recordPhone },
         ]}
-        value={contactPhone}
+        value={recordPhone}
+        error={!!fieldErrors.phone}
+        validationMessage={fieldErrors.phone}
         onChange={() => {}}
       />
 
       <Flex direction="column" gap="small">
-      <Flex justify="center">
-      <Tag variant="success">Feb 19, 2026</Tag>
-      </Flex>
-        <Divider size="extra-small" />
+        <Flex justify="center">
+          <Tag variant="success">Feb 19, 2026</Tag>
+        </Flex>
 
         {messages.map((msg) => (
-         <Flex
-          key={msg.id}
-          justify={msg.sender === "me" ? "end" : "start"}
-        >
-          <Tag variant={msg.sender === "me" ? "info" : "default"}>
-            {msg.text} · {msg.time}
-          </Tag>
-        </Flex>
+          <Flex direction="column" gap="flush" key={msg.id}>
+            <Flex justify={msg.sender === "me" ? "end" : "start"}>
+              <Text variant="bodytext">{msg.text}</Text>
+            </Flex>
+            <Flex justify={msg.sender === "me" ? "end" : "start"}>
+              <Text variant="microcopy">{msg.time}</Text>
+            </Flex>
+          </Flex>
         ))}
       </Flex>
 
@@ -77,17 +122,17 @@ export default function SmsTab({ openModal }: any) {
         name="message"
         label="Write a Message"
         value={message}
-        onChange={(val) => setMessage(String(val))}
+        error={!!fieldErrors.message}
+        validationMessage={fieldErrors.message}
+        onChange={(v) => {
+          setMessage(String(v));
+          setFieldErrors((prev) => ({ ...prev, message: undefined }));
+        }}
         maxLength={250}
       />
 
       <Flex justify="end">
-        <Button
-          variant="primary"
-          size="small"
-          disabled={!number || !contactPhone || !message}
-          onClick={openModal}
-        >
+        <Button variant="primary" size="small" onClick={handleSend}>
           Send SMS
         </Button>
       </Flex>

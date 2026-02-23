@@ -6,9 +6,9 @@ import {
 } from "@hubspot/ui-extensions";
 import ScheduleModal from "./ScheduleModel";
 
-export default function ScheduleTab(){
+export default function ScheduleTab({ activeTab }: any) {
 
-  return(
+  return (
     <Flex align="center" justify="center" direction="column" gap="small">
 
       <EmptyState title="No scheduled SMS yet">
@@ -17,8 +17,10 @@ export default function ScheduleTab(){
           Schedule an SMS to automatically send messages later.
         </Text>
 
-      <Button variant="primary"
-         overlay={<ScheduleModal mode="schedule" />}>
+        <Button
+          variant="primary"
+          overlay={<ScheduleModal mode="schedule" activeTab={activeTab} />}
+        >
           Schedule SMS
         </Button>
 
