@@ -1,9 +1,22 @@
 import {
-  Modal, DateInput, TimeInput, Button, Flex, Box,
-  Select, TextArea, Text, ModalBody, ModalFooter
+  Modal,
+  DateInput,
+  TimeInput,
+  Button,
+  Flex,
+  Box,
+  Select,
+  TextArea,
+  Text,
+  ModalBody,
+  ModalFooter,
 } from "@hubspot/ui-extensions";
-import { useCrmProperties } from "@hubspot/ui-extensions/crm";
+import {
+  useCrmProperties,
+  useAssociations,
+} from "@hubspot/ui-extensions/crm";
 import { useState, useEffect } from "react";
+
 
 const IANA_ZONES: Record<string, string> = {
   sydney: "Australia/Sydney",
@@ -32,47 +45,67 @@ const getDateTimeForTimezone = (tz: string) => {
   };
 };
 
-export default function ScheduleModal({ mode, activeTab, actions }: any) {
+
+export default function ScheduleModal({ actions }: any) {
+
+
   const { properties, isLoading } = useCrmProperties([
     "firstname",
     "lastname",
     "phone",
   ]);
 
+  const {
+    results: associatedContacts,
+    isLoading: assocLoading,
+  } = useAssociations({
+    toObjectType: "0-1",
+    properties: ["firstname", "lastname", "phone"],
+  });
+
+
+  const contactOptions =
+    associatedContacts && associatedContacts.length > 0
+      ? associatedContacts.map((contact: any) => ({
+        label:
+          `${contact.properties?.firstname ?? ""} ${contact.properties?.lastname ?? ""
+            }`.trim() || "Unnamed contact",
+        value: contact.properties?.phone ?? "",
+      }))
+      : [
+        {
+          label:
+            `${properties?.firstname ?? ""} ${properties?.lastname ?? ""
+              }`.trim() || "Unnamed contact",
+          value: properties?.phone ?? "",
+        },
+      ];
+
   const [number, setNumber] = useState("");
-  const [timezone, setTimezone] = useState("sydney");
+  const [selectedPhone, setSelectedPhone] = useState(
+    contactOptions[0]?.value || ""
+  );
+  const [timezone, setTimezone] = useState("india");
   const [date, setDate] = useState<any>();
   const [time, setTime] = useState<any>();
   const [message, setMessage] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<{
-    number?: string;
-    phone?: string;
-    date?: string;
-    time?: string;
-    message?: string;
-  }>({});
+  const [errors, setErrors] = useState<any>({});
 
-  useEffect(() => {
-    const { date: tzDate, time: tzTime } = getDateTimeForTimezone(timezone);
-    setDate(tzDate);
-    setTime(tzTime);
-  }, []);
+  if (isLoading || assocLoading) {
+    return <Text>Loading...</Text>;
+  }
 
-  useEffect(() => {
-    const { date: tzDate, time: tzTime } = getDateTimeForTimezone(timezone);
-    setDate(tzDate);
-    setTime(tzTime);
-  }, [timezone]);
 
-  useEffect(() => {
-    setFieldErrors({});
-  }, [activeTab]);
+  const tzNow = getDateTimeForTimezone(timezone);
+  const minDate = tzNow.date;
 
-  if (isLoading) return <Text>Loading...</Text>;
+  const isToday =
+    date?.year === minDate.year &&
+    date?.month === minDate.month &&
+    date?.date === minDate.date;
 
-  const contactName =
-    `${properties?.firstname ?? ""} ${properties?.lastname ?? ""}`.trim();
-  const contactPhone = properties?.phone ?? "";
+  const minTime = isToday ? tzNow.time : undefined;
+
 
   const numbers = [
     { label: "+91 9000000000", value: "+919000000000" },
@@ -85,60 +118,63 @@ export default function ScheduleModal({ mode, activeTab, actions }: any) {
     { label: "(GMT+00:00) London", value: "uk" },
   ];
 
-  const tzNow = getDateTimeForTimezone(timezone);
-  const minDate = tzNow.date;
-
-  const isToday =
-    date?.year === minDate.year &&
-    date?.month === minDate.month &&
-    date?.date === minDate.date;
-
-  const minTime = isToday ? tzNow.time : undefined;
 
   const handleSchedule = () => {
-    const errors: {
-      number?: string;
-      phone?: string;
-      date?: string;
-      time?: string;
-      message?: string;
-    } = {};
-    if (!number) errors.number = "From Number is required";
-    if (!contactPhone) errors.phone = "Contact Phone is required";
-    if (!date) errors.date = "Date is required";
-    if (!time) errors.time = "Time is required";
-    if (!message) errors.message = "Message is required";
+    const newErrors: any = {};
 
-    setFieldErrors(errors);
-    if (Object.keys(errors).length > 0) return;
+    if (!number) newErrors.number = "From number required";
+    if (!selectedPhone) newErrors.phone = "Contact required";
+    if (!date) newErrors.date = "Date required";
+    if (!time) newErrors.time = "Time required";
+    if (!message) newErrors.message = "Message required";
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) return;
+
+    console.log("Scheduled SMS:", {
+      number,
+      selectedPhone,
+      date,
+      time,
+      timezone,
+      message,
+    });
+
+    actions.closeOverlay("schedule-modal");
   };
 
+
   return (
-    <Modal id="schedule-modal" title="Schedule Message" width="lg">
+    <Modal
+      id="schedule-modal"
+      title="Schedule Message"
+      width="lg"
+    >
       <ModalBody>
         <Flex direction="column" gap="medium">
           <Select
             label="From Number"
             options={numbers}
             value={number}
-            error={!!fieldErrors.number}
-            validationMessage={fieldErrors.number}
+            error={!!errors.number}
+            validationMessage={errors.number}
             onChange={(v) => {
               setNumber(String(v));
-              setFieldErrors((prev) => ({ ...prev, number: undefined }));
+              setErrors({ ...errors, number: undefined });
             }}
           />
 
           <Select
             label="Contact"
-            name="contact"
-            options={[
-              { label: contactName || "Unknown contact", value: contactPhone },
-            ]}
-            value={contactPhone}
-            error={!!fieldErrors.phone}
-            validationMessage={fieldErrors.phone}
-            onChange={() => {}}
+            options={contactOptions}
+            value={selectedPhone}
+            error={!!errors.phone}
+            validationMessage={errors.phone}
+            onChange={(v) => {
+              setSelectedPhone(String(v));
+              setErrors({ ...errors, phone: undefined });
+            }}
           />
 
           <Select
@@ -151,68 +187,62 @@ export default function ScheduleModal({ mode, activeTab, actions }: any) {
           <Flex gap="medium">
             <Box flex={1}>
               <DateInput
-                name="date"
                 label="Date"
                 value={date}
                 min={minDate}
-                minValidationMessage="Cannot schedule in the past"
-                error={!!fieldErrors.date}
-                validationMessage={fieldErrors.date}
-                onChange={(v) => {
-                  setDate(v);
-                  setFieldErrors((prev) => ({ ...prev, date: undefined }));
-                }}
-              />
+                minValidationMessage="Cannot schedule in past"
+                error={!!errors.date}
+                validationMessage={errors.date}
+                onChange={setDate} name={""} />
             </Box>
 
             <Box flex={1}>
               <TimeInput
-                name="time"
                 label="Time"
                 value={time}
                 min={minTime}
-                error={!!fieldErrors.time}
-                validationMessage={fieldErrors.time}
-                onChange={(v) => {
-                  setTime(v);
-                  setFieldErrors((prev) => ({ ...prev, time: undefined }));
-                }}
-              />
+                error={!!errors.time}
+                validationMessage={errors.time}
+                onChange={setTime} name={""} />
             </Box>
           </Flex>
 
           <TextArea
-            name="msg"
             label="Write a Message"
+            name=""
             value={message}
-            error={!!fieldErrors.message}
-            validationMessage={fieldErrors.message}
+            maxLength={250}
+            error={!!errors.message || message.length >= 250}
+            validationMessage={
+              errors.message
+                ? errors.message
+                : message.length >= 250
+                  ? "Maximum allowed 250 characters"
+                  : undefined
+            }
             onChange={(v) => {
               setMessage(String(v));
-              setFieldErrors((prev) => ({ ...prev, message: undefined }));
+              setErrors({ ...errors, message: undefined });
             }}
-            maxLength={250}
           />
-
-          <Text variant="microcopy">
-            This field allows a maximum of 250 characters
-          </Text>
         </Flex>
+        <Text variant="microcopy" format={{ fontWeight: "bold" }}>
+          Maximum 250 characters
+        </Text>
       </ModalBody>
 
       <ModalFooter>
         <Button
           variant="secondary"
-          overlay={
-            <Modal id="schedule-modal" onClose={() => {}}></Modal>
-          }
+          onClick={() => actions.closeOverlay("schedule-modal")}
         >
           Cancel
         </Button>
+
         <Button variant="primary" onClick={handleSchedule}>
           Schedule SMS
         </Button>
       </ModalFooter>
     </Modal>
   );
-}
+} 

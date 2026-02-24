@@ -4,22 +4,22 @@ import SmsTab from "./SmsTab";
 import ScheduleTab from "./ScheduleTab";
 import AuditLogs from "./AuditLogs";
 
-export default function TabsContainer({ context,t }: any) {
+export default function TabsContainer({ context, actions, t }: any) {
   const [activeTab, setActiveTab] = useState<string | number>("first");
 
   return (
     <Flex direction="column" gap="medium">
       <Tabs
-        defaultSelected="first"
+        defaultSelected="second"
         selected={activeTab}
         onSelectedChange={(selectedId: string | number) => setActiveTab(selectedId)}
       >
         <Tab tabId="first" title="SMS">
-          <SmsTab context={context} activeTab={activeTab} t={t} />
+          <SmsTab context={context} actions={actions} activeTab={activeTab} t={t} />
         </Tab>
 
         <Tab tabId="second" title="Schedule SMS">
-          <ScheduleTab activeTab={activeTab}  t={t}/>
+          <ScheduleTab actions={actions} activeTab={activeTab} t={t} />
         </Tab>
 
         <Tab tabId="third" title="Audit Log">

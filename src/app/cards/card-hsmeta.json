@@ -2,7 +2,7 @@
   "uid": "zuperapps_card",
   "type": "card",
   "config": {
-    "name": "New Card",
+    "name": "SMS",
     "location": "crm.record.tab",
     "entrypoint": "/app/cards/NewCard.tsx",
     "objectTypes": [
