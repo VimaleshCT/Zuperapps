@@ -105,7 +105,8 @@ export default function SmsTab({ context, activeTab, openModal }: any) {
       </Flex>
 
       <Select
-        label="From Number"
+        label="From Number*"
+        placeholder="Select Phone number"
         options={numbers}
         value={number}
         error={!!fieldErrors.number}
@@ -117,7 +118,8 @@ export default function SmsTab({ context, activeTab, openModal }: any) {
       />
 
       <Select
-        label="Contact"
+        label="Contact*"
+        placeholder="Select Contact"
         name="record"
         options={contactOptions}
         value={selectedPhone}
@@ -147,15 +149,16 @@ export default function SmsTab({ context, activeTab, openModal }: any) {
 
       <TextArea
         name="message"
-        label="Write a Message"
+        label=""
+        placeholder="Type a message..."
         value={message}
-        error={message.length >= 250}
+        error={!!fieldErrors.message || message.length >= 250}
         validationMessage={
           fieldErrors.message
             ? fieldErrors.message
             : message.length >= 250
-              ? "Error"
-              : "Maximum allowed 250 characters"
+              ? "Maximum 250 characters only allowed"
+              : "This field allows a Maximum of 250 characters"
         }
         onChange={(v) => {
           setMessage(String(v));
@@ -163,9 +166,6 @@ export default function SmsTab({ context, activeTab, openModal }: any) {
         }}
         maxLength={250}
       />
-      {/* <Text variant="microcopy" format={{ fontWeight: "bold" }}>
-        Maximum 250 characters
-      </Text> */}
       <Flex justify="end">
         <Button variant="primary" size="small" onClick={handleSend}>
           Send SMS

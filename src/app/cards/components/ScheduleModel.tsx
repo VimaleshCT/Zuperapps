@@ -46,7 +46,7 @@ const getDateTimeForTimezone = (tz: string) => {
 };
 
 
-export default function ScheduleModal({ actions }: any) {
+export default function ScheduleModal({ actions, onSchedule }: any) {
 
 
   const { properties, isLoading } = useCrmProperties([
@@ -91,6 +91,12 @@ export default function ScheduleModal({ actions }: any) {
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<any>({});
 
+  
+    useEffect(() => {
+      setDate(undefined);
+      setTime(undefined);
+    }, [timezone]);
+
   if (isLoading || assocLoading) {
     return <Text>Loading...</Text>;
   }
@@ -119,6 +125,7 @@ export default function ScheduleModal({ actions }: any) {
   ];
 
 
+
   const handleSchedule = () => {
     const newErrors: any = {};
 
@@ -132,7 +139,7 @@ export default function ScheduleModal({ actions }: any) {
 
     if (Object.keys(newErrors).length > 0) return;
 
-    console.log("Scheduled SMS:", {
+    onSchedule({
       number,
       selectedPhone,
       date,
@@ -149,12 +156,13 @@ export default function ScheduleModal({ actions }: any) {
     <Modal
       id="schedule-modal"
       title="Schedule Message"
-      width="lg"
+      width="md"
     >
       <ModalBody>
         <Flex direction="column" gap="medium">
           <Select
-            label="From Number"
+            label="From Number*"
+            placeholder="Select Phone Number"
             options={numbers}
             value={number}
             error={!!errors.number}
@@ -166,7 +174,8 @@ export default function ScheduleModal({ actions }: any) {
           />
 
           <Select
-            label="Contact"
+            label="Contact*"
+            placeholder="Select Contact"
             options={contactOptions}
             value={selectedPhone}
             error={!!errors.phone}
@@ -178,7 +187,7 @@ export default function ScheduleModal({ actions }: any) {
           />
 
           <Select
-            label="Timezone"
+            label="Timezone*"
             options={zones}
             value={timezone}
             onChange={(v) => setTimezone(String(v))}
@@ -187,7 +196,7 @@ export default function ScheduleModal({ actions }: any) {
           <Flex gap="medium">
             <Box flex={1}>
               <DateInput
-                label="Date"
+                label="Date*"
                 value={date}
                 min={minDate}
                 minValidationMessage="Cannot schedule in past"
@@ -208,7 +217,8 @@ export default function ScheduleModal({ actions }: any) {
           </Flex>
 
           <TextArea
-            label="Write a Message"
+            label="Write a message"
+            placeholder="Type a message..."
             name=""
             value={message}
             maxLength={250}
@@ -217,8 +227,8 @@ export default function ScheduleModal({ actions }: any) {
               errors.message
                 ? errors.message
                 : message.length >= 250
-                  ? "Maximum allowed 250 characters"
-                  : undefined
+                  ? "Maximum 250 characters only allowed"
+                  : "This field allows a Maximum of 250 characters"
             }
             onChange={(v) => {
               setMessage(String(v));
@@ -226,9 +236,6 @@ export default function ScheduleModal({ actions }: any) {
             }}
           />
         </Flex>
-        <Text variant="microcopy" format={{ fontWeight: "bold" }}>
-          Maximum 250 characters
-        </Text>
       </ModalBody>
 
       <ModalFooter>

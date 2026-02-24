@@ -89,7 +89,6 @@ export default function AuditLogs() {
       page={page}
       pageCount={pageCount}
       onPageChange={setPage}
-      onDelete={handleDelete}
     />
   );
 }
