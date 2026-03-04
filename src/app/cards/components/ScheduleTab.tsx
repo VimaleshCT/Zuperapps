@@ -18,9 +18,8 @@ import ScheduleModal from "./ScheduleModel";
 
 export default function ScheduleTab({ actions }: any) {
   const [scheduledList, setScheduledList] = useState<any[]>([]);
-  const [page, setPage] = useState(1);
-
-  const ITEMS_PER_PAGE = 5;
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [page, setPage] = useState(1)
 
   const handleAddSchedule = (data: any) => {
     setScheduledList((prev) => [
@@ -34,18 +33,15 @@ export default function ScheduleTab({ actions }: any) {
     setPage(1);
   };
 
-  const pageCount = Math.ceil(
-    scheduledList.length / ITEMS_PER_PAGE
-  );
+  const pageCount = Math.ceil(scheduledList.length / itemsPerPage);
 
   const paginatedData = useMemo(() => {
     return scheduledList.slice(
-      (page - 1) * ITEMS_PER_PAGE,
-      page * ITEMS_PER_PAGE
+      (page - 1) * itemsPerPage,
+      page * itemsPerPage
     );
-  }, [scheduledList, page]);
+  }, [scheduledList, page, itemsPerPage]);
 
-  // ================= EMPTY STATE =================
   if (scheduledList.length === 0) {
     return (
       <Flex align="center" justify="center" direction="column" gap="small">
@@ -76,7 +72,6 @@ export default function ScheduleTab({ actions }: any) {
 
   return (
     <Flex direction="column" gap="medium">
-      {/* Top Buttons */}
       <Flex justify="end" gap="small">
         <Button
           variant="secondary"
@@ -100,7 +95,7 @@ export default function ScheduleTab({ actions }: any) {
         </Button>
       </Flex>
 
-      {/* TABLE */}
+  
       <Table
         bordered
         paginated
