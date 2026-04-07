@@ -2,18 +2,18 @@
   "uid": "Zuperapps",
   "type": "app",
   "config": {
-    "description": "A basic static token app for testing",
     "name": "SMS by Zuperapps",
+    "description": "A basic static token app for testing",
     "distribution": "private",
     "auth": {
-      "type": "static",
+      "type": "oauth",
+      "redirectUrls": ["http://localhost:4001/api/v1/hubspot/callback"],
       "requiredScopes": [
-        "oauth",
         "crm.objects.contacts.read",
         "crm.objects.contacts.write",
         "crm.objects.companies.read",
-        "crm.objects.deals.read",
         "crm.objects.companies.write",
+        "crm.objects.deals.read",
         "crm.objects.deals.write"
       ],
       "optionalScopes": [],
@@ -31,4 +31,4 @@
       "supportPhone": "+18005555555"
     }
   }
-}
+} 

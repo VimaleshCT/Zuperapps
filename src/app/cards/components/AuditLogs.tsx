@@ -1,73 +1,62 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ReusableTable from "./ReusableTable";
+import { api } from "../utils/api";
 
-export default function AuditLogs() {
-  const [logs, setLogs] = useState([
-    {
-      id: 1,
-      from: "+15313244301",
-      to: "+918760725615",
-      message: "Hi I have send this message for testing purpose",
-      status: "success",
-      reason: "-",
-      date: "2/19/2026, 2:56 PM",
-    },
-    {
-      id: 2,
-      from: "+15313244301",
-      to: "+918760725615",
-      message: "scheduleless message",
-      status: "success",
-      reason: "-",
-      date: "2/12/2026, 7:33 PM",
-    },
-    {
-      id: 3,
-      from: "+15313244301",
-      to: "+918760725615",
-      message: "This message came from scheduler",
-      status: "cancelled",
-      reason: "-",
-      date: "2/12/2026, 7:23 PM",
-    },
-    {
-      id: 4,
-      from: "+15313244301",
-      to: "+918760725615",
-      message: "This message came from scheduler",
-      status: "scheduled",
-      reason: "-",
-      date: "2/12/2026, 7:14 PM",
-    },
-    {
-      id: 5,
-      from: "+15313244301",
-      to: "+918760725615",
-      message: "send this message for test the logs",
-      status: "-",
-      reason: "-",
-      date: "2/12/2026, 7:01 PM",
-    },
-    {
-      id: 6,
-      from: "+15313244301",
-      to: "+918760725615",
-      message: "another message log example",
-      status: "success",
-      reason: "-",
-      date: "2/12/2026, 7:11 PM",
-    },
-  ]);
+export default function AuditLogs({ context }: any) {
 
+  const portalId = context?.portal?.id;
+  const objectId = context?.crm?.objectId;
+
+  const [logs, setLogs] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const ITEMS_PER_PAGE = 5;
 
-  const pageCount = Math.ceil(logs.length / ITEMS_PER_PAGE);
-  const paginatedLogs = logs.slice(
-    (page - 1) * ITEMS_PER_PAGE,
-    page * ITEMS_PER_PAGE
-  );
+  /*
+  -------------------------------------------------
+  FETCH LOGS FROM BACKEND
+  -------------------------------------------------
+  */
+  useEffect(() => {
+    async function fetchLogs() {
+      if (!portalId || !objectId) return;
 
+      try {
+        const res = await api.getLogs({
+          portalId,
+          objectId,
+          page,
+          perPage: ITEMS_PER_PAGE,
+        });
+
+        const data = await res.json();
+
+        const formatted = (data?.logs || []).map((log: any) => ({
+          id: log.rowNo,
+          from: log.from,
+          to: log.sent,
+          message: log.message,
+          status: log.status,
+          reason: log.failedReason || "-",
+          date: log.createdAt
+            ? new Date(log.createdAt).toLocaleString()
+            : "-",
+        }));
+
+        setLogs(formatted);
+
+      } catch (err) {
+        console.error("Failed to fetch logs", err);
+      }
+    }
+
+    fetchLogs();
+  }, [portalId, objectId, page]);
+
+  /*
+  -------------------------------------------------
+  TABLE CONFIG
+  -------------------------------------------------
+  */
   const columns = [
     { key: "id", label: "SI" },
     { key: "from", label: "FROM" },
@@ -78,14 +67,17 @@ export default function AuditLogs() {
     { key: "date", label: "CREATED DATE" },
   ];
 
-  const handleDelete = (id: number) => {
-    setLogs((prev) => prev.filter((log) => log.id !== id));
-  };
+  /*
+  -------------------------------------------------
+  PAGINATION (FROM BACKEND)
+  -------------------------------------------------
+  */
+  const pageCount = 10; // optional: replace later with backend totalPages
 
   return (
     <ReusableTable
       columns={columns}
-      data={paginatedLogs}
+      data={logs}
       page={page}
       pageCount={pageCount}
       onPageChange={setPage}

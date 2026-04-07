@@ -16,6 +16,9 @@ import {
   useAssociations,
 } from "@hubspot/ui-extensions/crm";
 import { useState, useEffect } from "react";
+import { api } from "../utils/api";
+
+
 
 
 const IANA_ZONES: Record<string, string> = {
@@ -46,7 +49,7 @@ const getDateTimeForTimezone = (tz: string) => {
 };
 
 
-export default function ScheduleModal({ actions, onSchedule }: any) {
+export default function ScheduleModal({ actions, onSchedule, context }: any) {
 
 
   const { properties, isLoading } = useCrmProperties([
@@ -111,12 +114,32 @@ export default function ScheduleModal({ actions, onSchedule }: any) {
     date?.date === minDate.date;
 
   const minTime = isToday ? tzNow.time : undefined;
+const [numbers, setNumbers] = useState<any[]>([]);
+
+useEffect(() => {
+  async function fetchNumbers() {
+    const portalId = context?.portal?.id;
+    if (!portalId) return;
+
+    try {
+      const res = await api.getNumbers(portalId);
+      const data = await res.json();
+
+      const formatted = (data || []).map((n: any) => ({
+        label: n.sender_number,
+        value: n.sender_number,
+      }));
+
+      setNumbers(formatted);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  fetchNumbers();
+}, []);
 
 
-  const numbers = [
-    { label: "+91 9000000000", value: "+919000000000" },
-    { label: "+91 8000000000", value: "+918000000000" },
-  ];
 
   const zones = [
     { label: "(GMT+10:00) Sydney", value: "sydney" },

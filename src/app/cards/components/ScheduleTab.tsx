@@ -15,22 +15,72 @@ import {
 } from "@hubspot/ui-extensions";
 import { useState, useMemo } from "react";
 import ScheduleModal from "./ScheduleModel";
+import { api } from "../utils/api";
 
-export default function ScheduleTab({ actions }: any) {
+export default function ScheduleTab({ actions,context }: any) {
+
+  const portalId = context?.portal?.id;
+  const objectId = context?.crm?.objectId;
+
   const [scheduledList, setScheduledList] = useState<any[]>([]);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [page, setPage] = useState(1)
+  const [itemsPerPage] = useState(10);
+  const [page, setPage] = useState(1);
 
-  const handleAddSchedule = (data: any) => {
-    setScheduledList((prev) => [
-      {
-        id: Date.now(),
-        ...data,
-        createdAt: new Date().toLocaleString(),
-      },
-      ...prev,
-    ]);
-    setPage(1);
+  /*
+  -------------------------------------------------
+  ADD SCHEDULE (API CALL)
+  -------------------------------------------------
+  */
+  const handleAddSchedule = async (data: any) => {
+    try {
+      await api.sendMessage({
+        origin: {
+          portalId,
+          objectId,
+          from: data.number,
+          schedule: {
+            time: `${data.date.year}-${data.date.month + 1}-${data.date.date} ${data.time.hours}:${data.time.minutes}`,
+            timezone: data.timezone,
+          },
+        },
+        fields: {
+          "Phone Number": data.selectedPhone,
+          Message: data.message,
+        },
+      });
+
+      // Update UI
+      setScheduledList((prev) => [
+        {
+          id: Date.now(),
+          ...data,
+          createdAt: new Date().toLocaleString(),
+        },
+        ...prev,
+      ]);
+
+      setPage(1);
+
+    } catch (err) {
+      console.error("Schedule failed", err);
+    }
+  };
+
+  /*
+  -------------------------------------------------
+  CANCEL SCHEDULE (API CALL)
+  -------------------------------------------------
+  */
+  const handleCancel = async (id: number) => {
+    try {
+      await api.cancelSchedule(String(id));
+
+      setScheduledList((prev) =>
+        prev.filter((i) => i.id !== id)
+      );
+    } catch (err) {
+      console.error("Cancel failed", err);
+    }
   };
 
   const pageCount = Math.ceil(scheduledList.length / itemsPerPage);
@@ -42,14 +92,15 @@ export default function ScheduleTab({ actions }: any) {
     );
   }, [scheduledList, page, itemsPerPage]);
 
+  /*
+  -------------------------------------------------
+  EMPTY STATE
+  -------------------------------------------------
+  */
   if (scheduledList.length === 0) {
     return (
       <Flex align="center" justify="center" direction="column" gap="small">
-        <EmptyState
-          title="No scheduled SMS yet"
-          layout="vertical"
-          reverseOrder
-        >
+        <EmptyState title="No scheduled SMS yet" layout="vertical" reverseOrder>
           <Text>
             Schedule an SMS to automatically send messages later.
           </Text>
@@ -60,6 +111,7 @@ export default function ScheduleTab({ actions }: any) {
               <ScheduleModal
                 actions={actions}
                 onSchedule={handleAddSchedule}
+                context={context}
               />
             }
           >
@@ -70,8 +122,14 @@ export default function ScheduleTab({ actions }: any) {
     );
   }
 
+  /*
+  -------------------------------------------------
+  TABLE UI
+  -------------------------------------------------
+  */
   return (
     <Flex direction="column" gap="medium">
+
       <Flex justify="end" gap="small">
         <Button
           variant="secondary"
@@ -80,6 +138,7 @@ export default function ScheduleTab({ actions }: any) {
             <ScheduleModal
               actions={actions}
               onSchedule={handleAddSchedule}
+              context={context}
             />
           }
         >
@@ -95,7 +154,6 @@ export default function ScheduleTab({ actions }: any) {
         </Button>
       </Flex>
 
-  
       <Table
         bordered
         paginated
@@ -119,21 +177,10 @@ export default function ScheduleTab({ actions }: any) {
         <TableBody>
           {paginatedData.map((item) => (
             <TableRow key={item.id}>
-              <TableCell width="min">
-                {item.number}
-              </TableCell>
-
-              <TableCell width="min">
-                {item.selectedPhone}
-              </TableCell>
-
-              <TableCell width="max">
-                {item.message}
-              </TableCell>
-
-              <TableCell width="min">
-                {item.createdAt}
-              </TableCell>
+              <TableCell width="min">{item.number}</TableCell>
+              <TableCell width="min">{item.selectedPhone}</TableCell>
+              <TableCell width="max">{item.message}</TableCell>
+              <TableCell width="min">{item.createdAt}</TableCell>
 
               <TableCell width="min">
                 {item.date?.date}/
@@ -148,10 +195,7 @@ export default function ScheduleTab({ actions }: any) {
                   variant="transparent"
                   size="small"
                   overlay={
-                    <Modal
-                      id={`cancel-${item.id}`}
-                      title="Cancel Schedule"
-                    >
+                    <Modal id={`cancel-${item.id}`} title="Cancel Schedule">
                       <ModalBody>
                         <Text>
                           Are you sure you want to cancel the schedule?
@@ -161,13 +205,7 @@ export default function ScheduleTab({ actions }: any) {
                       <ModalFooter>
                         <Button
                           variant="primary"
-                          onClick={() => {
-                            setScheduledList((prev) =>
-                              prev.filter(
-                                (i) => i.id !== item.id
-                              )
-                            );
-                          }}
+                          onClick={() => handleCancel(item.id)}
                         >
                           Cancel Schedule
                         </Button>
