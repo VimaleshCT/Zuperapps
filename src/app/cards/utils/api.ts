@@ -1,30 +1,46 @@
-const BASE_URL = "http://localhost:4001/api/v1/hubspot";
+const BASE_URL = "https://nondeciduously-supratemporal-eleonor.ngrok-free.dev/api/v1/hubspot";
 
-export const api = {
-  getNumbers: (portalId: string) =>
-    fetch(`${BASE_URL}/provider/numbers?portalId=${portalId}`),
+export const createApi = (hubspot: any) => ({
 
-  getMessages: (params: any) =>
-    fetch(
-      `${BASE_URL}/messages?portalId=${params.portalId}&objectId=${params.objectId}&toNumber=${params.toNumber || ""}`
-    ),
+  getNumbers: async (portalId: string) => {
+    const res = await hubspot.fetch(
+      `${BASE_URL}/provider/numbers?portalId=${portalId}`,
+      { method: "GET" }
+    );
+    return res.json(); 
+  },
 
-  getLogs: (params: any) =>
-    fetch(
-      `${BASE_URL}/message-logs?portalId=${params.portalId}&objectId=${params.objectId}&page=${params.page}&perPage=${params.perPage}`
-    ),
+  getMessages: async (params: any) => {
+    const res = await hubspot.fetch(
+      `${BASE_URL}/messages?portalId=${params.portalId}&objectId=${params.objectId}`,
+      { method: "GET" }
+    );
+    return res.json(); 
+  },
 
-  sendMessage: (body: any) =>
-    fetch(`${BASE_URL}/messages`, {
+  getLogs: async (params: any) => {
+    const res = await hubspot.fetch(
+      `${BASE_URL}/message-logs?portalId=${params.portalId}&objectId=${params.objectId}&page=${params.page}&perPage=${params.perPage}`,
+      { method: "GET" }
+    );
+    return res.json(); 
+  },
+
+
+  sendMessage: async (body: any) => {
+    const res = await hubspot.fetch(`${BASE_URL}/messages`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    }),
+      body: body, 
+      timeout: 50000,
+    });
+    return res.json();
+  },
 
-  cancelSchedule: (messageId: string) =>
-    fetch(`${BASE_URL}/schedule/cancel`, {
+  cancelSchedule: async (messageId: string) => {
+    const res = await hubspot.fetch(`${BASE_URL}/schedule/cancel`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ messageId }),
-    }),
-};
+      body: { messageId }, 
+    });
+    return res.json();
+  },
+});

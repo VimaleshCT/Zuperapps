@@ -7,6 +7,7 @@ hubspot.extend(({ context, actions }) => (
   <TabsContainer
     context={context}
     actions={actions}
+    hubspot={hubspot}
   // t={(key: string) => getTranslation(context.user.locale || "en", key)}
   />
 ));

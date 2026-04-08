@@ -15,9 +15,9 @@ import {
 } from "@hubspot/ui-extensions";
 import { useState, useMemo } from "react";
 import ScheduleModal from "./ScheduleModel";
-import { api } from "../utils/api";
+import { createApi } from "../utils/api";
 
-export default function ScheduleTab({ actions,context }: any) {
+export default function ScheduleTab({ actions,context, hubspot }: any) {
 
   const portalId = context?.portal?.id;
   const objectId = context?.crm?.objectId;
@@ -25,7 +25,7 @@ export default function ScheduleTab({ actions,context }: any) {
   const [scheduledList, setScheduledList] = useState<any[]>([]);
   const [itemsPerPage] = useState(10);
   const [page, setPage] = useState(1);
-
+   const api = createApi(hubspot);
   /*
   -------------------------------------------------
   ADD SCHEDULE (API CALL)
@@ -139,6 +139,7 @@ export default function ScheduleTab({ actions,context }: any) {
               actions={actions}
               onSchedule={handleAddSchedule}
               context={context}
+              hubspot={hubspot}
             />
           }
         >

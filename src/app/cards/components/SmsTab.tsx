@@ -11,14 +11,14 @@ import {
   useCrmProperties,
   useAssociations,
 } from "@hubspot/ui-extensions/crm";
-import { api } from "../utils/api";
+import { createApi } from "../utils/api";
 
-export default function SmsTab({ context, activeTab }: any) {
+export default function SmsTab({ context, activeTab, hubspot }: any) {
 
   const objectType = context?.crm?.objectTypeId;
   const portalId = context?.portal?.id;
   const objectId = context?.crm?.objectId;
-
+  const api = createApi(hubspot)
   const isCompanyOrDeal = objectType === "0-2" || objectType === "0-3";
 
   const propertyNames =
@@ -41,7 +41,7 @@ export default function SmsTab({ context, activeTab }: any) {
   const [numbers, setNumbers] = useState<any[]>([]);
   const [messages, setMessages] = useState<any[]>([]);
   const [fieldErrors, setFieldErrors] = useState<any>({});
-
+  const [scheduleTime, setScheduleTime] = useState<string | null>(null);
   /*
   -------------------------------------------------
   RESET ERRORS WHEN TAB CHANGES
@@ -85,34 +85,64 @@ export default function SmsTab({ context, activeTab }: any) {
   FETCH SENDER NUMBERS
   -------------------------------------------------
   */
-  useEffect(() => {
-    async function fetchNumbers() {
-      if (!portalId) return;
+useEffect(() => {
+  async function fetchNumbers() {
+    if (!portalId) return;
 
-      try {
-        const res = await api.getNumbers(portalId);
-        const data = await res.json();
+    try {
+      const response = await api.getNumbers(portalId); 
 
-        const formatted = (data || []).map((n: any) => ({
-          label: n.sender_number,
-          value: n.sender_number,
+      console.log("Raw numbers response:", response);
+
+      let formatted: any[] = [];
+
+     
+      if (Array.isArray(response)) {
+        formatted = response.map((item: any) => ({
+          label: item.data,
+          value: item.data,
         }));
-
-        setNumbers(formatted);
-      } catch (err) {
-        console.error("Error fetching numbers", err);
       }
-    }
 
-    fetchNumbers();
-  }, [portalId]);
+      else if (typeof response?.data === "string") {
+        formatted = [
+          {
+            label: response.data,
+            value: response.data,
+          },
+        ];
+      }
+
+      else if (Array.isArray(response?.data)) {
+        formatted = response.data.map((contact: any) => ({
+          label:
+            contact.senderNo ||
+            contact.digits ||
+            contact.sender_number ||
+            "Unknown",
+          value:
+            contact.senderNo ||
+            contact.digits ||
+            contact.sender_number ||
+            "",
+        }));
+      }
+
+      setNumbers(formatted);
+    } catch (err) {
+      console.error("Error fetching numbers", err);
+    }
+  }
+
+  fetchNumbers();
+}, [portalId]);
 
   /*
   -------------------------------------------------
   FETCH MESSAGE HISTORY
   -------------------------------------------------
   */
-  useEffect(() => {
+   useEffect(() => {
     async function fetchMessages() {
       if (!portalId || !objectId) return;
 
@@ -150,12 +180,13 @@ export default function SmsTab({ context, activeTab }: any) {
     setNumber("");
     setSelectedPhone("");
     setMessage("");
+    setScheduleTime(null); 
     setFieldErrors({});
   };
 
   /*
   -------------------------------------------------
-  SEND SMS 
+  SEND SMS (Instant + Schedule)
   -------------------------------------------------
   */
   const handleSend = async () => {
@@ -168,23 +199,48 @@ export default function SmsTab({ context, activeTab }: any) {
     setFieldErrors(errors);
 
     if (Object.keys(errors).length > 0) return;
+    const getObjectType = () => {
+  switch (objectType) {
+    case "0-1":
+      return "CONTACT";
+    case "0-2":
+      return "COMPANY";
+    case "0-3":
+      return "DEAL";
+    default:
+      return "CONTACT";
+  }
+};
+
+    const payload: any = {
+      origin: {
+        portalId,
+        objectId,
+        objectType: getObjectType(),
+        email: context?.user?.email,
+        isTimeLine: true,
+        from: number,
+      },
+      fields: {
+        "Phone Number": selectedPhone,
+        Message: message,
+      },
+    };
+
+
+    if (scheduleTime) {
+      payload.origin.schedule = {
+        time: new Date(scheduleTime).toISOString(),
+        timezone: "Asia/Kolkata",
+      };
+    }
 
     try {
-      await api.sendMessage({
-        origin: {
-          portalId,
-          objectId,
-          from: number,
-        },
-        fields: {
-          "Phone Number": selectedPhone,
-          Message: message,
-        },
-      });
+      console.log("🚀 PAYLOAD:", JSON.stringify(payload, null, 2));
+      await api.sendMessage(payload);
 
       handleReset();
 
-      // refresh messages after sending
       const res = await api.getMessages({ portalId, objectId });
       const data = await res.json();
 
@@ -226,15 +282,7 @@ export default function SmsTab({ context, activeTab }: any) {
         placeholder="Select Phone number"
         options={numbers}
         value={number}
-        error={!!fieldErrors.number}
-        validationMessage={fieldErrors.number}
-        onChange={(v) => {
-          setNumber(String(v));
-          setFieldErrors((prev: any) => ({
-            ...prev,
-            number: undefined,
-          }));
-        }}
+        onChange={(v) => setNumber(String(v))}
       />
 
       <Select
@@ -242,15 +290,7 @@ export default function SmsTab({ context, activeTab }: any) {
         placeholder="Select Contact"
         options={contactOptions}
         value={selectedPhone}
-        error={!!fieldErrors.phone}
-        validationMessage={fieldErrors.phone}
-        onChange={(v) => {
-          setSelectedPhone(String(v));
-          setFieldErrors((prev: any) => ({
-            ...prev,
-            phone: undefined,
-          }));
-        }}
+        onChange={(v) => setSelectedPhone(String(v))}
       />
 
       {/* MESSAGE HISTORY */}
@@ -261,7 +301,6 @@ export default function SmsTab({ context, activeTab }: any) {
 
           return (
             <Flex key={msg.id} direction="column" gap="flush">
-
               {showDate && (
                 <Flex justify="center">
                   <Tag variant="info">{msg.date}</Tag>
@@ -269,59 +308,37 @@ export default function SmsTab({ context, activeTab }: any) {
               )}
 
               <Flex gap="extra-small" align="center">
-                <Text variant="bodytext" format={{ fontWeight: "bold" }}>
+                <Text format={{ fontWeight: "bold" }}>
                   {msg.sender}
                 </Text>
 
-                <Text variant="microcopy" format={{ fontWeight: "bold" }}>
+                <Text format={{ fontWeight: "bold" }}>
                   {msg.time}
                 </Text>
               </Flex>
 
-              <Text variant="bodytext">
-                {msg.text}
-              </Text>
-
+              <Text>{msg.text}</Text>
             </Flex>
           );
         })}
       </Flex>
 
+   
       <TextArea
         name="message"
+        label=""
         placeholder="Type a message..."
         value={message}
-        error={!!fieldErrors.message || message.length >= 250}
-        validationMessage={
-          fieldErrors.message
-            ? fieldErrors.message
-            : message.length >= 250
-              ? "Maximum 250 characters only allowed"
-              : "Max 250 characters"
-        }
-        onChange={(v) => {
-          setMessage(String(v));
-          setFieldErrors((prev: any) => ({
-            ...prev,
-            message: undefined,
-          }));
-        }}
+        onChange={(v) => setMessage(String(v))}
         maxLength={250}
-        label=""
       />
 
       <Flex justify="end">
-        <Text variant="microcopy">
-          {message.length}/250
-        </Text>
+        <Text>{message.length}/250</Text>
       </Flex>
 
       <Flex justify="end">
-        <Button
-          variant="primary"
-          size="small"
-          onClick={handleSend}
-        >
+        <Button onClick={handleSend}>
           Send SMS
         </Button>
       </Flex>

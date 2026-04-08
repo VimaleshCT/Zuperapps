@@ -20,7 +20,7 @@
       "conditionallyRequiredScopes": []
     },
     "permittedUrls": {
-      "fetch": ["https://api.hubapi.com"],
+      "fetch": ["https://api.hubapi.com", "https://nondeciduously-supratemporal-eleonor.ngrok-free.dev"],
       "iframe": [],
       "img": []
     },

@@ -16,10 +16,7 @@ import {
   useAssociations,
 } from "@hubspot/ui-extensions/crm";
 import { useState, useEffect } from "react";
-import { api } from "../utils/api";
-
-
-
+import { createApi } from "../utils/api";
 
 const IANA_ZONES: Record<string, string> = {
   sydney: "Australia/Sydney",
@@ -48,9 +45,8 @@ const getDateTimeForTimezone = (tz: string) => {
   };
 };
 
-
-export default function ScheduleModal({ actions, onSchedule, context }: any) {
-
+export default function ScheduleModal({ actions, onSchedule, context, hubspot }: any) {
+  const api = createApi(hubspot);
 
   const { properties, isLoading } = useCrmProperties([
     "firstname",
@@ -66,44 +62,70 @@ export default function ScheduleModal({ actions, onSchedule, context }: any) {
     properties: ["firstname", "lastname", "phone"],
   });
 
-
-  const contactOptions =
-    associatedContacts && associatedContacts.length > 0
-      ? associatedContacts.map((contact: any) => ({
-        label:
-          `${contact.properties?.firstname ?? ""} ${contact.properties?.lastname ?? ""
-            }`.trim() || "Unnamed contact",
-        value: contact.properties?.phone ?? "",
-      }))
-      : [
-        {
-          label:
-            `${properties?.firstname ?? ""} ${properties?.lastname ?? ""
-              }`.trim() || "Unnamed contact",
-          value: properties?.phone ?? "",
-        },
-      ];
-
+  // ─── ALL state declarations ───────────────────────────────────────────────
   const [number, setNumber] = useState("");
-  const [selectedPhone, setSelectedPhone] = useState(
-    contactOptions[0]?.value || ""
-  );
+  const [selectedPhone, setSelectedPhone] = useState("");
   const [timezone, setTimezone] = useState("india");
   const [date, setDate] = useState<any>();
   const [time, setTime] = useState<any>();
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<any>({});
+  const [numbers, setNumbers] = useState<any[]>([]);
 
-  
-    useEffect(() => {
-      setDate(undefined);
-      setTime(undefined);
-    }, [timezone]);
+  // ─── ALL useEffect hooks — MUST be above any conditional return ───────────
+  // Fix for React error #310: hooks cannot be called after a conditional return.
+  // Both useEffects are moved here, before the isLoading guard below.
 
+  useEffect(() => {
+    setDate(undefined);
+    setTime(undefined);
+  }, [timezone]);
+
+  useEffect(() => {
+    async function fetchNumbers() {
+      const portalId = context?.portal?.id;
+      if (!portalId) return;
+
+      try {
+        const res = await api.getNumbers(portalId);
+        const data = await res.json();
+
+        const formatted = (data || []).map((n: any) => ({
+          label: n.sender_number,
+          value: n.sender_number,
+        }));
+
+        setNumbers(formatted);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    fetchNumbers();
+  }, []);
+
+  // ─── Conditional loading guard (safe — all hooks are already called above) ─
   if (isLoading || assocLoading) {
     return <Text>Loading...</Text>;
   }
 
+  // ─── Derived values (computed after hooks) ────────────────────────────────
+  const contactOptions =
+    associatedContacts && associatedContacts.length > 0
+      ? associatedContacts.map((contact: any) => ({
+          label:
+            `${contact.properties?.firstname ?? ""} ${contact.properties?.lastname ?? ""}`.trim() ||
+            "Unnamed contact",
+          value: contact.properties?.phone ?? "",
+        }))
+      : [
+          {
+            label:
+              `${properties?.firstname ?? ""} ${properties?.lastname ?? ""}`.trim() ||
+              "Unnamed contact",
+            value: properties?.phone ?? "",
+          },
+        ];
 
   const tzNow = getDateTimeForTimezone(timezone);
   const minDate = tzNow.date;
@@ -114,40 +136,12 @@ export default function ScheduleModal({ actions, onSchedule, context }: any) {
     date?.date === minDate.date;
 
   const minTime = isToday ? tzNow.time : undefined;
-const [numbers, setNumbers] = useState<any[]>([]);
-
-useEffect(() => {
-  async function fetchNumbers() {
-    const portalId = context?.portal?.id;
-    if (!portalId) return;
-
-    try {
-      const res = await api.getNumbers(portalId);
-      const data = await res.json();
-
-      const formatted = (data || []).map((n: any) => ({
-        label: n.sender_number,
-        value: n.sender_number,
-      }));
-
-      setNumbers(formatted);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  fetchNumbers();
-}, []);
-
-
 
   const zones = [
     { label: "(GMT+10:00) Sydney", value: "sydney" },
     { label: "(GMT+05:30) India", value: "india" },
     { label: "(GMT+00:00) London", value: "uk" },
   ];
-
-
 
   const handleSchedule = () => {
     const newErrors: any = {};
@@ -173,7 +167,6 @@ useEffect(() => {
 
     actions.closeOverlay("schedule-modal");
   };
-
 
   return (
     <Modal
@@ -225,7 +218,9 @@ useEffect(() => {
                 minValidationMessage="Cannot schedule in past"
                 error={!!errors.date}
                 validationMessage={errors.date}
-                onChange={setDate} name={""} />
+                onChange={setDate}
+                name={""}
+              />
             </Box>
 
             <Box flex={1}>
@@ -235,7 +230,9 @@ useEffect(() => {
                 min={minTime}
                 error={!!errors.time}
                 validationMessage={errors.time}
-                onChange={setTime} name={""} />
+                onChange={setTime}
+                name={""}
+              />
             </Box>
           </Flex>
 
@@ -250,8 +247,8 @@ useEffect(() => {
               errors.message
                 ? errors.message
                 : message.length >= 250
-                  ? "Maximum 250 characters only allowed"
-                  : "This field allows a Maximum of 250 characters"
+                ? "Maximum 250 characters only allowed"
+                : "This field allows a Maximum of 250 characters"
             }
             onChange={(v) => {
               setMessage(String(v));
@@ -275,4 +272,4 @@ useEffect(() => {
       </ModalFooter>
     </Modal>
   );
-} 
+}
