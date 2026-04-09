@@ -17,15 +17,13 @@ export default function AuditLogs({ context, hubspot }: any) {
       if (!portalId || !objectId) return;
 
       try {
-        const res = await api.getLogs({
+        const data = await api.getLogs({
           portalId,
           objectId,
           page,
           perPage: 5,
         });
-
-        const data = await res.json();
-
+   
         setLogs(
           (data?.logs || []).map((log: any) => ({
             id: log.rowNo,

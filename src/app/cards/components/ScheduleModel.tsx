@@ -11,10 +11,7 @@ import {
   ModalBody,
   ModalFooter,
 } from "@hubspot/ui-extensions";
-import {
-  useCrmProperties,
-  useAssociations,
-} from "@hubspot/ui-extensions/crm";
+import { useCrmProperties, useAssociations } from "@hubspot/ui-extensions/crm";
 import { useState, useEffect } from "react";
 import { createApi } from "../utils/api";
 
@@ -45,7 +42,12 @@ const getDateTimeForTimezone = (tz: string) => {
   };
 };
 
-export default function ScheduleModal({ actions, onSchedule, context, hubspot }: any) {
+export default function ScheduleModal({
+  actions,
+  onSchedule,
+  context,
+  hubspot,
+}: any) {
   const api = createApi(hubspot);
 
   const { properties, isLoading } = useCrmProperties([
@@ -54,13 +56,11 @@ export default function ScheduleModal({ actions, onSchedule, context, hubspot }:
     "phone",
   ]);
 
-  const {
-    results: associatedContacts,
-    isLoading: assocLoading,
-  } = useAssociations({
-    toObjectType: "0-1",
-    properties: ["firstname", "lastname", "phone"],
-  });
+  const { results: associatedContacts, isLoading: assocLoading } =
+    useAssociations({
+      toObjectType: "0-1",
+      properties: ["firstname", "lastname", "phone"],
+    });
 
   // ─── ALL state declarations ───────────────────────────────────────────────
   const [number, setNumber] = useState("");
@@ -71,10 +71,6 @@ export default function ScheduleModal({ actions, onSchedule, context, hubspot }:
   const [message, setMessage] = useState("");
   const [errors, setErrors] = useState<any>({});
   const [numbers, setNumbers] = useState<any[]>([]);
-
-  // ─── ALL useEffect hooks — MUST be above any conditional return ───────────
-  // Fix for React error #310: hooks cannot be called after a conditional return.
-  // Both useEffects are moved here, before the isLoading guard below.
 
   useEffect(() => {
     setDate(undefined);
@@ -87,8 +83,7 @@ export default function ScheduleModal({ actions, onSchedule, context, hubspot }:
       if (!portalId) return;
 
       try {
-        const res = await api.getNumbers(portalId);
-        const data = await res.json();
+        const data = await api.getNumbers(portalId);
 
         const formatted = (data || []).map((n: any) => ({
           label: n.sender_number,
@@ -169,11 +164,7 @@ export default function ScheduleModal({ actions, onSchedule, context, hubspot }:
   };
 
   return (
-    <Modal
-      id="schedule-modal"
-      title="Schedule Message"
-      width="md"
-    >
+    <Modal id="schedule-modal" title="Schedule Message" width="md">
       <ModalBody>
         <Flex direction="column" gap="medium">
           <Select
@@ -247,8 +238,8 @@ export default function ScheduleModal({ actions, onSchedule, context, hubspot }:
               errors.message
                 ? errors.message
                 : message.length >= 250
-                ? "Maximum 250 characters only allowed"
-                : "This field allows a Maximum of 250 characters"
+                  ? "Maximum 250 characters only allowed"
+                  : "This field allows a Maximum of 250 characters"
             }
             onChange={(v) => {
               setMessage(String(v));
